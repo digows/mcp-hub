@@ -24,11 +24,11 @@ RUN curl -fsSL https://deb.nodesource.com/setup_20.x | bash - \
 WORKDIR /app
 
 # ---------------------------------------------------------
-# 1. Build and install MCP Gateway Registry
+# 1. Base Structure for MCP Servers
 # ---------------------------------------------------------
-COPY mcp-gateway-registry /app/mcp-gateway-registry
-WORKDIR /app/mcp-gateway-registry
-RUN pnpm install && pnpm build
+# Copy servers here as submodules or direct code
+# COPY servers/my-custom-server /app/my-custom-server
+# ... build steps here ...
 
 # ---------------------------------------------------------
 # 2. Supervisor Setup for Process Management

@@ -8,14 +8,29 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  build-and-push-image:
+  build-and-push-images:
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+
+    strategy:
+      matrix:
+        include:
+          - name: mcp-servers
+            context: .
+            dockerfile: Dockerfile.mcp-servers
+          - name: mcp-gateway-registry
+            context: mcp-gateway-registry
+            dockerfile: mcp-gateway-registry/docker/Dockerfile.registry
+          - name: mcp-gateway-auth
+            context: mcp-gateway-registry
+            dockerfile: mcp-gateway-registry/docker/Dockerfile.auth
+          - name: mcp-gateway-metrics
+            context: mcp-gateway-registry/metrics-service
+            dockerfile: mcp-gateway-registry/metrics-service/Dockerfile
 
     steps:
       - name: Checkout repository
@@ -34,7 +49,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/digows/${{ matrix.name }}
           tags: |
             type=raw,value=latest,enable={{is_default_branch}}
             type=sha,format=long
@@ -42,7 +57,8 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
         with:
-          context: .
+          context: ${{ matrix.context }}
+          file: ${{ matrix.dockerfile }}
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
