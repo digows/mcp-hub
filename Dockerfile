@@ -31,35 +31,13 @@ WORKDIR /app/mcp-gateway-registry
 RUN pnpm install && pnpm build
 
 # ---------------------------------------------------------
-# 2. Build and install N8N
-# ---------------------------------------------------------
-WORKDIR /app
-COPY servers/n8n-mcp-server /app/n8n-mcp-server
-WORKDIR /app/n8n-mcp-server
-# Setup depends on exactly how the official n8n repo builds,
-# often pnpm install && pnpm build
-RUN pnpm install && pnpm build
-
-# ---------------------------------------------------------
-# 3. Build and install Freqtrade (Python)
-# ---------------------------------------------------------
-WORKDIR /app
-COPY servers/freqtrade-mcp-server /app/freqtrade-mcp-server
-WORKDIR /app/freqtrade-mcp-server
-RUN python3 -m venv .venv \
-    && . .venv/bin/activate \
-    && pip install -r requirements.txt || true \
-    && pip install -e .
-
-# ---------------------------------------------------------
-# 4. Supervisor Setup for Process Management
+# 2. Supervisor Setup for Process Management
 # ---------------------------------------------------------
 WORKDIR /app
 COPY supervisord.conf /etc/supervisor/conf.d/supervisord.conf
 
-# Expose ports (Gateway usually runs on 3000, n8n on 5678, etc. Adjust as needed)
+# Expose ports (Gateway usually runs on 3000)
 EXPOSE 3000
-EXPOSE 5678
 
 # Command to run supervisor
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisor/conf.d/supervisord.conf"]
