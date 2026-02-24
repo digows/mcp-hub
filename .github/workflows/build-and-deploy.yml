@@ -20,8 +20,8 @@ jobs:
       matrix:
         include:
           - name: mcp-servers
-            context: .
-            dockerfile: Dockerfile.mcp-servers
+            context: servers
+            dockerfile: servers/Dockerfile
           - name: mcp-gateway-registry
             context: mcp-gateway-registry
             dockerfile: mcp-gateway-registry/docker/Dockerfile.registry
