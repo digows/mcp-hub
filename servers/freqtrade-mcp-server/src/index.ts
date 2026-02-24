@@ -256,6 +256,11 @@ app.use(cors());
 let transport: SSEServerTransport;
 
 app.get('/sse', async (req, res) => {
+    if (transport) {
+        try {
+            await server.close();
+        } catch (e) { }
+    }
     transport = new SSEServerTransport('/message', res);
     await server.connect(transport);
     console.log('Client connected to Freqtrade MCP Server SSE endpoint.');
