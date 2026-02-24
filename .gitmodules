@@ -1,0 +1,9 @@
+[submodule "mcp-gateway-registry"]
+	path = mcp-gateway-registry
+	url = https://github.com/agentic-community/mcp-gateway-registry.git
+[submodule "servers/n8n-mcp-server"]
+	path = servers/n8n-mcp-server
+	url = https://github.com/n8n-io/n8n.git
+[submodule "servers/freqtrade-mcp-server"]
+	path = servers/freqtrade-mcp-server
+	url = https://github.com/freqtrade/freqtrade.git
