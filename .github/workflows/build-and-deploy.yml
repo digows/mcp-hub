@@ -19,7 +19,7 @@ jobs:
     strategy:
       matrix:
         include:
-          - name: mcp-servers
+          - name: mcp-hub
             context: .
             dockerfile: Dockerfile
 

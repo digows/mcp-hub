@@ -8,6 +8,7 @@ WORKDIR /app
 
 # Install dependencies needed for our Freqtrade server
 # The base image already has node, but we might need pnpm
+ENV CI=true
 RUN npm install -g pnpm
 
 # 1. Copy and Build Freqtrade MCP Server

@@ -1,0 +1,9 @@
+node_modules
+.git
+.github
+*.log
+servers/freqtrade-mcp-server/build
+servers/freqtrade-mcp-server/node_modules
+dist
+.env
+.DS_Store
