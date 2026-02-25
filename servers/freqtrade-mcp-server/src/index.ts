@@ -1,4 +1,5 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
+import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import express from 'express';
 import cors from 'cors';
@@ -21,7 +22,11 @@ function logAudit(action: string, details: any) {
         action,
         details
     }) + '\n';
-    fs.appendFileSync(AUDIT_LOG_FILE, entry);
+    try {
+        fs.appendFileSync(AUDIT_LOG_FILE, entry);
+    } catch (e) {
+        console.error(`Failed to write to audit log: ${e}`);
+    }
 }
 
 const server = new Server(
@@ -182,7 +187,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             case 'stop':
             case 'pause':
             case 'reload_config': {
-                const safeEndpoint = name === 'pause' ? 'stopentry' : name; // Fallback to stopentry if pause doesn't exist depending on version
+                const safeEndpoint = name === 'pause' ? 'stopentry' : name;
                 const beforeStatus = await freqtradeRequest('/status');
                 const data = await freqtradeRequest(`/${safeEndpoint}`, { method: 'POST' });
                 logAudit(name, { before: beforeStatus, after: data });
@@ -218,7 +223,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 // 2. Execute
                 const data = await freqtradeRequest('/forceenter', {
                     method: 'POST',
-                    body: JSON.stringify({ pair, side, order_type: 'limit' }) // Freqtrade default body
+                    body: JSON.stringify({ pair, side, order_type: 'limit' })
                 });
 
                 logAudit('force_enter_executed', { pair, side, payload: data });
@@ -250,32 +255,39 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
     }
 });
 
-const app = express();
-app.use(cors());
+// Transport Selection Logic
+const TRANSPORT = process.env.MCP_TRANSPORT || 'stdio';
 
-let transport: SSEServerTransport;
+if (TRANSPORT === 'sse') {
+    const app = express();
+    app.use(cors());
 
-app.get('/sse', async (req, res) => {
-    if (transport) {
-        try {
-            await server.close();
-        } catch (e) { }
-    }
-    transport = new SSEServerTransport('/message', res);
-    await server.connect(transport);
-    console.log('Client connected to Freqtrade MCP Server SSE endpoint.');
-});
+    let transport: SSEServerTransport;
 
-app.post('/message', async (req, res) => {
-    if (transport) {
-        await transport.handlePostMessage(req, res);
-    } else {
-        res.status(500).send('SSE transport not initialized. Connect to /sse first.');
-    }
-});
+    app.get('/sse', async (req, res) => {
+        transport = new SSEServerTransport('/message', res);
+        await server.connect(transport);
+        console.error('Client connected to Freqtrade MCP Server via SSE');
+    });
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
+    app.post('/message', async (req, res) => {
+        if (transport) {
+            await transport.handlePostMessage(req, res);
+        } else {
+            res.status(500).send('SSE transport not initialized');
+        }
+    });
 
-app.listen(PORT, () => {
-    console.log(`Freqtrade MCP Server running on SSE: http://0.0.0.0:${PORT}/sse`);
-});
+    const PORT = parseInt(process.env.PORT || '3001', 10);
+    app.listen(PORT, () => {
+        console.error(`Freqtrade MCP Server running on SSE: http://0.0.0.0:${PORT}/sse`);
+    });
+} else {
+    // Default to STDIO
+    const transport = new StdioServerTransport();
+    server.connect(transport).catch(error => {
+        console.error("Failed to connect to STDIO transport:", error);
+        process.exit(1);
+    });
+    console.error('Freqtrade MCP Server running on STDIO');
+}

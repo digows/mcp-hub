@@ -20,17 +20,8 @@ jobs:
       matrix:
         include:
           - name: mcp-servers
-            context: servers
-            dockerfile: servers/Dockerfile
-          - name: mcp-gateway-registry
-            context: mcp-gateway-registry
-            dockerfile: mcp-gateway-registry/docker/Dockerfile.registry
-          - name: mcp-gateway-auth
-            context: mcp-gateway-registry
-            dockerfile: mcp-gateway-registry/docker/Dockerfile.auth
-          - name: mcp-gateway-metrics
-            context: mcp-gateway-registry/metrics-service
-            dockerfile: mcp-gateway-registry/metrics-service/Dockerfile
+            context: .
+            dockerfile: Dockerfile
 
     steps:
       - name: Checkout repository

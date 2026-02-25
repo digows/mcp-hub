@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "freqtrade": {
+      "command": "node",
+      "args": ["/app/servers/freqtrade-mcp-server/build/index.js"],
+      "active": true
+    }
+  }
+}
