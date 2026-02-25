@@ -1,7 +1,7 @@
 # ---------------------------------------------------------
 # MCP Hub - Fat Image using mcp-proxy-server
 # ---------------------------------------------------------
-FROM ghcr.io/ptbsare/mcp-proxy-server:latest
+FROM ghcr.io/ptbsare/mcp-proxy-server/mcp-proxy-server:0.4.1
 
 # Set working directory (usually /app in this image)
 WORKDIR /app
