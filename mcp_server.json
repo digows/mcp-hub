@@ -1,6 +1,7 @@
 {
   "mcpServers": {
     "freqtrade": {
+      "type": "stdio",
       "command": "node",
       "args": [
         "/mcp-proxy-server/servers/freqtrade-mcp-server/build/index.js"
