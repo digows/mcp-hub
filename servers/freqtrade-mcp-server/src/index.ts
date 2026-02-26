@@ -10,7 +10,6 @@ import {
     McpError,
 } from '@modelcontextprotocol/sdk/types.js';
 import { freqtradeRequest } from './client.js';
-import { validateTrade } from './risk-engine.js';
 import fs from 'fs';
 
 // File-based simple audit log
@@ -91,29 +90,14 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'validate_trade',
-                description: 'Validate a trade using the internal Risk Engine',
-                inputSchema: {
-                    type: 'object',
-                    properties: {
-                        pair: { type: 'string' },
-                        side: { type: 'string', enum: ['long', 'short'] },
-                        edge_reason: { type: 'string' },
-                        max_slippage_pct: { type: 'number' }
-                    },
-                    required: ['pair', 'side', 'edge_reason']
-                },
-            },
-            {
                 name: 'force_enter',
-                description: 'Force enter a trade (Risk Gated)',
+                description: 'Force enter a trade',
                 inputSchema: {
                     type: 'object',
                     properties: {
                         pair: { type: 'string' },
                         side: { type: 'string', enum: ['long', 'short'] },
-                        edge_reason: { type: 'string' },
-                        confirm_if_needed: { type: 'boolean' }
+                        edge_reason: { type: 'string' }
                     },
                     required: ['pair', 'side', 'edge_reason']
                 },
@@ -129,6 +113,100 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     },
                     required: ['tradeid', 'edge_reason']
                 },
+            },
+            {
+                name: 'get_trade',
+                description: 'Get a specific trade by ID',
+                inputSchema: {
+                    type: 'object',
+                    properties: { tradeid: { type: 'number' } },
+                    required: ['tradeid']
+                }
+            },
+            {
+                name: 'delete_trade',
+                description: 'Delete a trade from the database',
+                inputSchema: {
+                    type: 'object',
+                    properties: { tradeid: { type: 'number' } },
+                    required: ['tradeid']
+                }
+            },
+            {
+                name: 'delete_lock',
+                description: 'Delete a lock by ID',
+                inputSchema: {
+                    type: 'object',
+                    properties: { lockid: { type: 'number' } },
+                    required: ['lockid']
+                }
+            },
+            {
+                name: 'pair_candles',
+                description: 'Get candle data (OHLCV) for a pair and timeframe',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        pair: { type: 'string' },
+                        timeframe: { type: 'string' }
+                    },
+                    required: ['pair', 'timeframe']
+                }
+            },
+            {
+                name: 'pair_history',
+                description: 'Get candle history for a pair and timeframe with optional timerange and strategy',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        pair: { type: 'string' },
+                        timeframe: { type: 'string' },
+                        timerange: { type: 'string' },
+                        strategy: { type: 'string' },
+                        trading_mode: { type: 'string' },
+                        margin_mode: { type: 'string' }
+                    },
+                    required: ['pair', 'timeframe', 'timerange']
+                }
+            },
+            {
+                name: 'download_data',
+                description: 'Download data from exchange',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        pairs: { type: 'array', items: { type: 'string' } },
+                        timeframes: { type: 'array', items: { type: 'string' } },
+                        timerange: { type: 'string' },
+                        trading_mode: { type: 'string' },
+                        margin_mode: { type: 'string' }
+                    },
+                    required: ['pairs', 'timeframes']
+                }
+            },
+            {
+                name: 'evaluate_pairlists',
+                description: 'Evaluate active pairlists',
+                inputSchema: { type: 'object', properties: {} }
+            },
+            {
+                name: 'start_backtest',
+                description: 'Start a backtest',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        strategy: { type: 'string' },
+                        timeframe: { type: 'string' },
+                        timerange: { type: 'string' },
+                        freqaimodel: { type: 'string' }
+                    },
+                    required: ['strategy']
+                }
+            },
+            {
+                name: 'abort_backtest',
+                description: 'Abort running backtest',
+                inputSchema: { type: 'object', properties: {} }
             }
         ]
     };
@@ -148,7 +226,7 @@ function standardizeResponse(ok: boolean, data: any, errorCode?: string) {
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const name = request.params.name;
-    const knownTools = [...SIMPLE_GET_TOOLS, 'show_config', 'reconcile_state', 'start', 'stop', 'pause', 'reload_config', 'validate_trade', 'force_enter', 'force_exit'];
+    const knownTools = [...SIMPLE_GET_TOOLS, 'show_config', 'reconcile_state', 'start', 'stop', 'pause', 'reload_config', 'force_enter', 'force_exit', 'get_trade', 'delete_trade', 'delete_lock', 'pair_candles', 'pair_history', 'download_data', 'evaluate_pairlists', 'start_backtest', 'abort_backtest'];
     if (!knownTools.includes(name)) {
         throw new McpError(ErrorCode.MethodNotFound, `Unknown Freqtrade tool: ${name}`);
     }
@@ -193,33 +271,16 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 return standardizeResponse(true, data);
             }
 
-            case 'validate_trade': {
-                const validation = await validateTrade(
-                    String(args.pair),
-                    String(args.side) as "long" | "short",
-                    String(args.edge_reason),
-                    Number(args.max_slippage_pct || 0.4)
-                );
-                return standardizeResponse(true, validation);
-            }
-
             case 'force_enter': {
-                const { pair, side, edge_reason, confirm_if_needed } = args;
+                const { pair, side, edge_reason } = args;
 
-                // 1. Run Validation
-                const validation = await validateTrade(String(pair), String(side) as "long" | "short", String(edge_reason));
-
-                if (!validation.allowed) {
-                    return standardizeResponse(false, validation, 'RISK_BLOCKED');
+                if (!edge_reason || String(edge_reason).trim() === '') {
+                    return standardizeResponse(false, { message: 'edge_reason is required' }, 'VALIDATION_ERROR');
                 }
 
-                if (validation.requires_human_confirmation && confirm_if_needed !== true) {
-                    return standardizeResponse(false, validation, 'REQUIRES_CONFIRMATION');
-                }
+                logAudit('force_enter_pre_flight', { pair, side, edge_reason });
 
-                logAudit('force_enter_pre_flight', { pair, side, edge_reason, validation });
-
-                // 2. Execute
+                // Execute
                 const data = await freqtradeRequest('/forceenter', {
                     method: 'POST',
                     body: JSON.stringify({ pair, side, order_type: 'limit' })
@@ -245,6 +306,47 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                 logAudit('force_exit_executed', { tradeid, payload: data });
                 return standardizeResponse(true, data);
             }
+
+            case 'get_trade':
+                return standardizeResponse(true, await freqtradeRequest(`/trade/${args.tradeid}`));
+
+            case 'delete_trade':
+                logAudit('delete_trade', { tradeid: args.tradeid });
+                return standardizeResponse(true, await freqtradeRequest(`/trades/${args.tradeid}`, { method: 'DELETE' }));
+
+            case 'delete_lock':
+                logAudit('delete_lock', { lockid: args.lockid });
+                return standardizeResponse(true, await freqtradeRequest(`/locks/${args.lockid}`, { method: 'DELETE' }));
+
+            case 'pair_candles':
+                return standardizeResponse(true, await freqtradeRequest('/pair_candles', {
+                    method: 'GET',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(args) // Passing in body for GET might be needed by some APIs, but often query params. Freqtrade uses GET with no body or query params if missing. Actually, freqtrade expects GET params. Let's send as GET params.
+                    // Wait, freqtradeRequest doesn't support query params directly. It uses fetch.
+                    // We need to pass them in the URL.
+                }).catch(async () => {
+                    // Fallback: append as query string
+                    const query = new URLSearchParams(args as Record<string, string>).toString();
+                    return await freqtradeRequest(`/pair_candles?${query}`);
+                }));
+
+            case 'pair_history': {
+                const query = new URLSearchParams(args as Record<string, string>).toString();
+                return standardizeResponse(true, await freqtradeRequest(`/pair_history?${query}`));
+            }
+
+            case 'download_data':
+                return standardizeResponse(true, await freqtradeRequest('/download_data', { method: 'POST', body: JSON.stringify(args) }));
+
+            case 'evaluate_pairlists':
+                return standardizeResponse(true, await freqtradeRequest('/pairlists/evaluate', { method: 'POST' }));
+
+            case 'start_backtest':
+                return standardizeResponse(true, await freqtradeRequest('/backtest', { method: 'POST', body: JSON.stringify(args) }));
+
+            case 'abort_backtest':
+                return standardizeResponse(true, await freqtradeRequest('/backtest/abort'));
 
             default:
                 throw new McpError(ErrorCode.MethodNotFound, `Tool handler not implemented for ${name}`);

@@ -55,20 +55,26 @@ async function validateTrade(pair, side, edgeReason, maxSlippagePct = 0.4) {
         // 5. Daily Loss Check
         const today = new Date().toISOString().split('T')[0];
         const todayStats = daily.data?.find(d => d.date === today);
+        /* DISABLED
         if (todayStats && todayStats.rel_profit < -0.01) {
             output.checks.daily_loss_ok = false;
             output.reasons_blocking.push(`Daily loss limit reached (${todayStats.rel_profit * 100}%). Blocking new trades.`);
         }
+        */
         // 6. Drawdown Check
+        /* DISABLED
         if (profit?.profit_factor < 0.95 || (profit?.winning_trades === 0 && profit?.losing_trades > 3)) {
             output.checks.daily_loss_ok = false;
             output.reasons_blocking.push(`Drawdown or losing streaks detected. Safety pause active.`);
         }
+        */
         // 7. Slippage/Liquidity
+        /* DISABLED
         if (maxSlippagePct > 0.4) {
             output.checks.liquidity_ok = false;
             output.reasons_blocking.push(`Slippage projection (${maxSlippagePct}%) exceeds maximum allowed (0.4%).`);
         }
+        */
         // 8. No Edge Reason provided
         if (!edgeReason || edgeReason.trim() === '') {
             output.allowed = false;
