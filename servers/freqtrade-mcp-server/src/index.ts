@@ -56,42 +56,42 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
         tools: [
             ...SIMPLE_GET_TOOLS.map(name => ({
-                name: `freqtrade.${name}`,
+                name: name,
                 description: `Fetch ${name} from Freqtrade`,
                 inputSchema: { type: 'object', properties: {} },
             })),
             {
-                name: 'freqtrade.show_config',
+                name: 'show_config',
                 description: 'Fetch Freqtrade config (sanitized)',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.reconcile_state',
+                name: 'reconcile_state',
                 description: 'Consolidate status, count, profit, and balance',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.start',
+                name: 'start',
                 description: 'Start the bot',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.stop',
+                name: 'stop',
                 description: 'Stop the bot',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.pause',
+                name: 'pause',
                 description: 'Pause the bot (prevent new entries)',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.reload_config',
+                name: 'reload_config',
                 description: 'Reload bot configuration',
                 inputSchema: { type: 'object', properties: {} },
             },
             {
-                name: 'freqtrade.validate_trade',
+                name: 'validate_trade',
                 description: 'Validate a trade using the internal Risk Engine',
                 inputSchema: {
                     type: 'object',
@@ -105,7 +105,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
             },
             {
-                name: 'freqtrade.force_enter',
+                name: 'force_enter',
                 description: 'Force enter a trade (Risk Gated)',
                 inputSchema: {
                     type: 'object',
@@ -119,7 +119,7 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                 },
             },
             {
-                name: 'freqtrade.force_exit',
+                name: 'force_exit',
                 description: 'Force exit a trade',
                 inputSchema: {
                     type: 'object',
@@ -147,12 +147,11 @@ function standardizeResponse(ok: boolean, data: any, errorCode?: string) {
 }
 
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const rawName = request.params.name;
-    if (!rawName.startsWith('freqtrade.')) {
-        throw new McpError(ErrorCode.MethodNotFound, `Unknown Freqtrade tool: ${rawName}`);
+    const name = request.params.name;
+    const knownTools = [...SIMPLE_GET_TOOLS, 'show_config', 'reconcile_state', 'start', 'stop', 'pause', 'reload_config', 'validate_trade', 'force_enter', 'force_exit'];
+    if (!knownTools.includes(name)) {
+        throw new McpError(ErrorCode.MethodNotFound, `Unknown Freqtrade tool: ${name}`);
     }
-
-    const name = rawName.replace('freqtrade.', '');
     const args = request.params.arguments || {};
 
     try {
