@@ -19,6 +19,9 @@ RUN npm install -g pnpm
 # better-sqlite3 is required by n8n-mcp for its local state cache
 RUN npm install -g n8n-mcp better-sqlite3
 
+# Research Tools (Kukapay & Community) https://github.com/kukapay/kukapay-mcp-servers/blob/main/README.md
+RUN npm install -g dexscreener-trending-mcp crypto-feargreed-mcp crypto-indicators-mcp cryptopanic-mcp-server
+
 # Disable n8n-mcp telemetry at build time
 RUN N8N_MCP_TELEMETRY_DISABLED=true npx n8n-mcp telemetry disable || true
 

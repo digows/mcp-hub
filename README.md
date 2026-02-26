@@ -31,14 +31,10 @@ On every pod startup, the entrypoint script ([`docker-entrypoint.sh`](./docker-e
 
 ```
 mcp_server.base.json  ← Baked into the image (custom servers, always active)
-mcp_server_extra.json ← Mounted from ConfigMap (external servers, no rebuild needed)
+mcp_server_extra.json ← Mounted from Secret (external servers, no rebuild needed)
         ↓ merge
 mcp_server.json       ← Final config read by mcp-proxy-server
 ```
-
-This means:
-- **Custom servers** (like Freqtrade) are versioned with the code and always active.
-- **External servers** can be added/removed via `kubectl apply` without triggering a new image build.
 
 ---
 
@@ -57,127 +53,68 @@ mcp-gateway/
 
 ---
 
-## Custom Servers (Built-in)
+## Built-in Servers (Baked into Image)
 
-Custom servers live in `servers/` and are compiled into the image. They are defined in `mcp_server.json` at the repo root and always active.
+These servers are compiled/installed into the Docker image and are defined in `mcp_server.json`.
 
-### Freqtrade MCP Server
+### 1. Freqtrade MCP Server
+Exposes 43 tools from your Freqtrade bot.
+- **Tools**: `freqtrade__status`, `freqtrade__balance`, `freqtrade__force_enter`, etc.
+- **Config**: Uses `FREQTRADE_PUBLIC_URL`, `FREQTRADE_USERNAME`, `FREQTRADE_PASSWORD`.
 
-Exposes 43 tools from the Freqtrade REST API via STDIO transport. Tools are prefixed with the server key by the proxy:
+### 2. Research & Alpha Tools (Kukapay)
+Real-time market insights and sentiment analysis.
+- **DexScreener** (`dexscreener__*`): Trending pairs and liquidity data.
+- **CryptoPanic** (`cryptopanic__*`): Global crypto news (requires `CRYPTOPANIC_API_KEY`).
+- **Fear & Greed** (`feargreed__*`): Market sentiment index.
+- **Technical Indicators** (`indicators__*`): RSI, MACD, etc.
 
-| Tool (as exposed) | Description |
-|---|---|
-| `freqtrade__ping` | Health check |
-| `freqtrade__status` | Current open trades |
-| `freqtrade__balance` | Wallet balance |
-| `freqtrade__profit` | Cumulative profit stats |
-| `freqtrade__reconcile_state` | Aggregated status snapshot |
-| `freqtrade__force_enter` | Open a trade (Risk Gated) |
-| `freqtrade__force_exit` | Close a trade |
-| `freqtrade__validate_trade` | Pre-flight risk check |
-| … and 35+ more | See `SIMPLE_GET_TOOLS` in `index.ts` |
-
-### Adding a New Custom Server
-
-1. Create a new directory under `servers/my-new-server/`
-2. Implement an MCP STDIO server (any language/runtime)
-3. Add an entry to `mcp_server.json`:
-   ```json
-   {
-     "mcpServers": {
-       "freqtrade": { "..." },
-       "my-new-server": {
-         "type": "stdio",
-         "command": "node",
-         "args": ["/mcp-proxy-server/servers/my-new-server/build/index.js"],
-         "active": true
-       }
-     }
-   }
-   ```
-4. Update the `Dockerfile` to copy and build the new server
-5. Commit and push — CI will build and push the new image
+### 3. n8n-mcp
+Bridges your n8n workflows as tools.
+- **Tools**: `n8n-mcp__*` (mapped from active workflows).
+- **Config**: Uses `N8N_API_URL` and `N8N_API_KEY`.
 
 ---
 
-## External Servers (Runtime via ConfigMap)
+## External Servers (Runtime via Secret)
 
-You can wire in external MCP servers already running in your cluster (or anywhere reachable) **without rebuilding the image**.
+You can wire in external MCP servers without rebuilding the image by editing `mcp_server_extra.json` in `secrets.yml`.
 
-Edit the `mcp_server_extra.json` key in `configmap.yml` in the K8s manifests repo:
-
-```yaml
-# apps/mcp/configmap.yml
-data:
-  mcp_server_extra.json: |
-    {
-      "mcpServers": {
-        "n8n": {
-          "type": "sse",
-          "url": "http://n8n.n8n.svc.cluster.local:3000/sse",
-          "active": true
-        },
-        "home-assistant": {
-          "type": "sse",
-          "url": "http://homeassistant.homeassistant.svc.cluster.local:8123/mcp_server/sse",
-          "active": true
-        }
-      }
+Example for adding `n8n-executor` (converted from MCPorter):
+```json
+{
+  "mcpServers": {
+    "n8n-executor": {
+      "type": "http",
+      "url": "https://n8n.home.digows.com/mcp-server/http",
+      "headers": { "Authorization": "Bearer ..." },
+      "active": true
     }
+  }
+}
 ```
-
-Then apply:
-```sh
-kubectl apply -f apps/mcp/configmap.yml --context homeserver
-kubectl rollout restart deployment/mcp-hub -n mcp --context homeserver
-```
-
-The `mcpServers` from both configs are merged. Keys in `mcp_server_extra.json` **override** base keys with the same name.
 
 ---
 
 ## Kubernetes Configuration
 
 ### ConfigMap (non-sensitive)
-
-| Key | Default | Description |
-|---|---|---|
-| `PORT` | `3663` | Proxy HTTP port |
-| `ENABLE_ADMIN_UI` | `true` | Enable management dashboard |
-| `FREQTRADE_PUBLIC_URL` | `https://freqtrade.home.digows.com/api/v1` | Freqtrade API base URL |
-| `mcp_server_extra.json` | `{}` | Extra servers config (see above) |
+- `PORT`: `3663` (Hub port)
+- `ENABLE_ADMIN_UI`: `true`
+- `FREQTRADE_PUBLIC_URL`: Internal bot URL.
+- `N8N_API_URL`: Internal n8n URL.
 
 ### Secret (sensitive)
-
-| Key | Description |
-|---|---|
-| `FREQTRADE_USERNAME` | Freqtrade API username |
-| `FREQTRADE_PASSWORD` | Freqtrade API password |
-| `ADMIN_USERNAME` | Dashboard login username |
-| `ADMIN_PASSWORD` | Dashboard login password |
-| `SESSION_SECRET` | Cookie signing key — generate with `openssl rand -hex 32` |
-| `ALLOWED_KEYS` | API key for `/sse` and `/mcp` endpoints (via `X-Api-Key` header or `?key=` query) |
+- `FREQTRADE_USERNAME/PASSWORD`: Bot credentials.
+- `N8N_API_KEY`: For workflow access.
+- `CRYPTOPANIC_API_KEY`: Optional news key.
+- `ADMIN_USERNAME/PASSWORD`: Login for `https://mcp-hub.home.digows.com/`
+- `ALLOWED_KEYS`: API key for external clients (pass via `X-Api-Key`).
+- `mcp_server_extra.json`: JSON configuration for external servers.
 
 ---
 
 ## Endpoints
-
-| Endpoint | Description |
-|---|---|
-| `https://mcp-hub.home.digows.com/` | Management dashboard (login required) |
-| `https://mcp-hub.home.digows.com/sse` | Unified SSE endpoint for MCP clients |
-| `https://mcp-hub.home.digows.com/mcp` | Streamable HTTP (MCP protocol) |
-
-Authentication: pass `X-Api-Key: <ALLOWED_KEYS value>` or `?key=<value>`.
-
----
-
-## CI/CD
-
-On every push to `main`, GitHub Actions builds and pushes the image to:
-```
-ghcr.io/digows/mcp-hub:latest
-ghcr.io/digows/mcp-hub:sha-<commit>
-```
-
-The Kubernetes deployment uses `imagePullPolicy: Always`, so a `rollout restart` picks up the new image without changing manifests.
+- **Admin Dashboard**: `https://mcp-hub.home.digows.com/`
+- **SSE/MCP Endpoint**: `https://mcp-hub.home.digows.com/sse`
+- **Authentication**: All SSE/MCP requests MUST include `X-Api-Key: <ALLOWED_KEYS_VALUE>`.
