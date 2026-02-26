@@ -3,24 +3,35 @@
 # ---------------------------------------------------------
 FROM ghcr.io/ptbsare/mcp-proxy-server/mcp-proxy-server:0.4.1
 
-# Set working directory
 WORKDIR /mcp-proxy-server
 
-# Install dependencies needed for our Freqtrade server
-# The base image already has node, but we might need pnpm
+# CI mode prevents pnpm from prompting on TTY-less environments
 ENV CI=true
+
+# Install pnpm for building custom servers
 RUN npm install -g pnpm
 
-# 1. Copy and Build Freqtrade MCP Server
+# ------------------------------------------------------------------
+# 1. Copy and Build custom MCP servers
+# ------------------------------------------------------------------
 COPY servers/freqtrade-mcp-server /mcp-proxy-server/servers/freqtrade-mcp-server
 WORKDIR /mcp-proxy-server/servers/freqtrade-mcp-server
 RUN pnpm install && pnpm build
 
-# 2. Configure the Proxy Hub
-# The proxy expects its config in /mcp-proxy-server/config/mcp_server.json
+# ------------------------------------------------------------------
+# 2. Bake in the base server config (always-on custom servers)
+#    This is the immutable base — external servers are merged at runtime
+#    via /mcp-proxy-server/config/mcp_server_extra.json (from ConfigMap).
+# ------------------------------------------------------------------
 WORKDIR /mcp-proxy-server
-COPY mcp_server.json /mcp-proxy-server/config/mcp_server.json
+COPY mcp_server.json /mcp-proxy-server/config/mcp_server.base.json
 
-# Expose the default proxy port (usually 3000)
-# The image handles its own startup via its built-in entrypoint
-EXPOSE 3000
+# ------------------------------------------------------------------
+# 3. Copy the entrypoint merge script
+# ------------------------------------------------------------------
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+RUN chmod +x /docker-entrypoint.sh
+
+EXPOSE 3663
+
+ENTRYPOINT ["/docker-entrypoint.sh"]
