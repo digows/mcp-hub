@@ -18,18 +18,12 @@
     },
     "dexscreener": {
       "type": "stdio",
-      "command": "npx",
-      "args": [
-        "dexscreener-trending-mcp"
-      ],
+      "command": "dexscreener-trending-mcp",
       "active": true
     },
     "cryptopanic": {
       "type": "stdio",
-      "command": "npx",
-      "args": [
-        "cryptopanic-mcp-server"
-      ],
+      "command": "cryptopanic-mcp-server",
       "env": {
         "CRYPTOPANIC_API_KEY": ""
       },
@@ -37,18 +31,12 @@
     },
     "feargreed": {
       "type": "stdio",
-      "command": "npx",
-      "args": [
-        "crypto-feargreed-mcp"
-      ],
+      "command": "crypto-feargreed-mcp",
       "active": true
     },
     "indicators": {
       "type": "stdio",
-      "command": "npx",
-      "args": [
-        "crypto-indicators-mcp"
-      ],
+      "command": "crypto-indicators-mcp",
       "active": true
     }
   }
