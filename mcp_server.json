@@ -7,6 +7,14 @@
         "/mcp-proxy-server/servers/freqtrade-mcp-server/build/index.js"
       ],
       "active": true
+    },
+    "n8n-mcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "n8n-mcp"
+      ],
+      "active": true
     }
   }
 }

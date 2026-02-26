@@ -12,7 +12,18 @@ ENV CI=true
 RUN npm install -g pnpm
 
 # ------------------------------------------------------------------
-# 1. Copy and Build custom MCP servers
+# 1. Install npm-based MCP servers (no custom code required)
+# ------------------------------------------------------------------
+
+# n8n-mcp: bridges n8n workflows as MCP tools (runs in STDIO mode via proxy)
+# better-sqlite3 is required by n8n-mcp for its local state cache
+RUN npm install -g n8n-mcp better-sqlite3
+
+# Disable n8n-mcp telemetry at build time
+RUN N8N_MCP_TELEMETRY_DISABLED=true npx n8n-mcp telemetry disable || true
+
+# ------------------------------------------------------------------
+# 2. Copy and Build custom MCP servers (local source)
 # ------------------------------------------------------------------
 COPY servers/freqtrade-mcp-server /mcp-proxy-server/servers/freqtrade-mcp-server
 WORKDIR /mcp-proxy-server/servers/freqtrade-mcp-server
