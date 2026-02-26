@@ -43,12 +43,17 @@ RUN git clone --depth 1 https://github.com/kukapay/crypto-indicators-mcp.git \
     && cd crypto-indicators-mcp && npm install
 
 # Python-based research tools
-# Using pip3 install -e or just installing requirements
+# NOTE: Kukapay repos often require Python >=3.13. 
+# We patch pyproject.toml to allow >=3.10 since they typically just use httpx/mcp-sdk.
 RUN git clone --depth 1 https://github.com/kukapay/crypto-feargreed-mcp.git \
-    && cd crypto-feargreed-mcp && pip3 install --break-system-packages .
+    && cd crypto-feargreed-mcp \
+    && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
+    && pip3 install --break-system-packages .
 
 RUN git clone --depth 1 https://github.com/kukapay/cryptopanic-mcp-server.git \
-    && cd cryptopanic-mcp-server && pip3 install --break-system-packages .
+    && cd cryptopanic-mcp-server \
+    && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
+    && pip3 install --break-system-packages .
 
 # ------------------------------------------------------------------
 # 4. Global Tools

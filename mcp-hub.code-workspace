@@ -1,0 +1,11 @@
+{
+	"folders": [
+		{
+			"path": "."
+		},
+		{
+			"path": "../homeserver-k8s-manifests"
+		}
+	],
+	"settings": {}
+}
