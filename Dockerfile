@@ -9,7 +9,7 @@ WORKDIR /mcp-proxy-server
 ENV CI=true
 
 # ------------------------------------------------------------------
-# 1. Install System Dependencies
+# 1. Install System Dependencies (Python + Git)
 # ------------------------------------------------------------------
 USER root
 RUN apt-get update && apt-get install -y \
@@ -22,44 +22,50 @@ RUN apt-get update && apt-get install -y \
 RUN npm install -g pnpm
 
 # ------------------------------------------------------------------
-# 2. Install npm-based MCP servers
+# 2. Add Built-in MCP Servers (Subfolders)
 # ------------------------------------------------------------------
 
-# n8n-mcp: bridges n8n workflows as MCP tools
-# better-sqlite3 is required by n8n-mcp for its local state cache
-RUN npm install -g n8n-mcp better-sqlite3
-
-# Research Tools (Kukapay & Community - Node versions)
-RUN npm install -g git+https://github.com/kukapay/dexscreener-trending-mcp.git \
-    && npm install -g git+https://github.com/kukapay/crypto-indicators-mcp.git
-
-# ------------------------------------------------------------------
-# 3. Install Python-based MCP servers
-# ------------------------------------------------------------------
-# We use --break-system-packages because this is a dedicated container
-RUN pip3 install --break-system-packages \
-    git+https://github.com/kukapay/crypto-feargreed-mcp.git \
-    git+https://github.com/kukapay/cryptopanic-mcp-server.git
-
-# Disable n8n-mcp telemetry at build time
-RUN N8N_MCP_TELEMETRY_DISABLED=true npx n8n-mcp telemetry disable || true
-
-# ------------------------------------------------------------------
-# 4. Copy and Build custom MCP servers (local source)
-# ------------------------------------------------------------------
+# Frequencytrade custom server
 COPY servers/freqtrade-mcp-server /mcp-proxy-server/servers/freqtrade-mcp-server
 WORKDIR /mcp-proxy-server/servers/freqtrade-mcp-server
 RUN pnpm install && pnpm build
 
 # ------------------------------------------------------------------
-# 5. Bake in the base server config
+# 3. Add Research MCP Servers (Kukapay - Cloned for stability)
+# ------------------------------------------------------------------
+WORKDIR /mcp-proxy-server/external-servers
+
+# Node-based research tools
+RUN git clone --depth 1 https://github.com/kukapay/dexscreener-trending-mcp.git \
+    && cd dexscreener-trending-mcp && npm install
+
+RUN git clone --depth 1 https://github.com/kukapay/crypto-indicators-mcp.git \
+    && cd crypto-indicators-mcp && npm install
+
+# Python-based research tools
+# Using pip3 install -e or just installing requirements
+RUN git clone --depth 1 https://github.com/kukapay/crypto-feargreed-mcp.git \
+    && cd crypto-feargreed-mcp && pip3 install --break-system-packages .
+
+RUN git clone --depth 1 https://github.com/kukapay/cryptopanic-mcp-server.git \
+    && cd cryptopanic-mcp-server && pip3 install --break-system-packages .
+
+# ------------------------------------------------------------------
+# 4. Global Tools
+# ------------------------------------------------------------------
+# n8n-mcp is a stable public package
+RUN npm install -g n8n-mcp better-sqlite3
+
+# Disable n8n-mcp telemetry at build time
+RUN N8N_MCP_TELEMETRY_DISABLED=true npx n8n-mcp telemetry disable || true
+
+# ------------------------------------------------------------------
+# 5. Configuration Setup
 # ------------------------------------------------------------------
 WORKDIR /mcp-proxy-server
 COPY mcp_server.json /mcp-proxy-server/config/mcp_server.base.json
 
-# ------------------------------------------------------------------
-# 6. Copy the entrypoint merge script
-# ------------------------------------------------------------------
+# Copy the entrypoint merge script
 COPY docker-entrypoint.sh /docker-entrypoint.sh
 RUN chmod +x /docker-entrypoint.sh
 

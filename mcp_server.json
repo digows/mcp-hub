@@ -18,12 +18,18 @@
     },
     "dexscreener": {
       "type": "stdio",
-      "command": "dexscreener-trending-mcp",
+      "command": "node",
+      "args": [
+        "/mcp-proxy-server/external-servers/dexscreener-trending-mcp/index.js"
+      ],
       "active": true
     },
     "cryptopanic": {
       "type": "stdio",
-      "command": "cryptopanic-mcp-server",
+      "command": "python3",
+      "args": [
+        "/mcp-proxy-server/external-servers/cryptopanic-mcp-server/main.py"
+      ],
       "env": {
         "CRYPTOPANIC_API_KEY": ""
       },
@@ -31,12 +37,18 @@
     },
     "feargreed": {
       "type": "stdio",
-      "command": "crypto-feargreed-mcp",
+      "command": "python3",
+      "args": [
+        "/mcp-proxy-server/external-servers/crypto-feargreed-mcp/main.py"
+      ],
       "active": true
     },
     "indicators": {
       "type": "stdio",
-      "command": "crypto-indicators-mcp",
+      "command": "node",
+      "args": [
+        "/mcp-proxy-server/external-servers/crypto-indicators-mcp/index.js"
+      ],
       "active": true
     }
   }
