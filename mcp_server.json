@@ -30,9 +30,6 @@
       "args": [
         "/mcp-proxy-server/external-servers/cryptopanic-mcp-server/main.py"
       ],
-      "env": {
-        "CRYPTOPANIC_API_KEY": ""
-      },
       "active": true
     },
     "feargreed": {
