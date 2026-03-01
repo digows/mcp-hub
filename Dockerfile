@@ -55,8 +55,12 @@ RUN git clone --depth 1 https://github.com/kukapay/cryptopanic-mcp-server.git \
     && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
     && pip3 install --break-system-packages .
 
+# The polymarket server has a bug in pyproject.toml where the entry point points to an async function 'main'
+# instead of the synchronous wrapper 'run'. We patch it here along with the python version requirement.
 RUN git clone --depth 1 https://github.com/caiovicentino/polymarket-mcp-server.git \
     && cd polymarket-mcp-server \
+    && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
+    && sed -i 's/polymarket_mcp.server:main/polymarket_mcp.server:run/' pyproject.toml \
     && pip3 install --break-system-packages .
 
 # ------------------------------------------------------------------
