@@ -55,6 +55,10 @@ RUN git clone --depth 1 https://github.com/kukapay/cryptopanic-mcp-server.git \
     && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
     && pip3 install --break-system-packages .
 
+RUN git clone --depth 1 https://github.com/caiovicentino/polymarket-mcp-server.git \
+    && cd polymarket-mcp-server \
+    && pip3 install --break-system-packages .
+
 # ------------------------------------------------------------------
 # 4. Global Tools
 # ------------------------------------------------------------------

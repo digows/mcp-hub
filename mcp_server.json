@@ -47,6 +47,12 @@
         "/mcp-proxy-server/external-servers/crypto-indicators-mcp/index.js"
       ],
       "active": true
+    },
+    "polymarket": {
+      "type": "stdio",
+      "command": "polymarket-mcp",
+      "args": [],
+      "active": true
     }
   }
 }
