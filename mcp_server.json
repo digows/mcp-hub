@@ -53,6 +53,12 @@
       "command": "polymarket-mcp",
       "args": [],
       "active": true
+    },
+    "attio": {
+      "type": "stdio",
+      "command": "attio-mcp",
+      "args": [],
+      "active": true
     }
   }
 }
