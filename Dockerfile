@@ -61,6 +61,7 @@ RUN git clone --depth 1 https://github.com/caiovicentino/polymarket-mcp-server.g
     && cd polymarket-mcp-server \
     && sed -i 's/requires-python = ">=3.13"/requires-python = ">=3.10"/' pyproject.toml \
     && sed -i 's/polymarket_mcp.server:main/polymarket_mcp.server:run/' pyproject.toml \
+    && sed -i 's/"tag": "Crypto", "active": "true"/"tag": "Crypto", "active": "true", "closed": "false"/' src/polymarket_mcp/tools/market_discovery.py \
     && pip3 install --break-system-packages .
 
 # ------------------------------------------------------------------
