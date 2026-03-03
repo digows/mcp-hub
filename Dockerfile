@@ -70,7 +70,7 @@ RUN git clone --depth 1 https://github.com/caiovicentino/polymarket-mcp-server.g
 # 4. Global Tools
 # ------------------------------------------------------------------
 # n8n-mcp is a stable public package
-RUN npm install -g n8n-mcp better-sqlite3 @iflow-mcp/attio-mcp
+RUN npm install -g n8n-mcp better-sqlite3
 
 # Disable n8n-mcp telemetry at build time
 RUN N8N_MCP_TELEMETRY_DISABLED=true npx n8n-mcp telemetry disable || true
