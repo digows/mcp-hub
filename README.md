@@ -54,7 +54,34 @@ Used for existing public MCP servers that don't have a stable online endpoint or
 
 ---
 
-## ⚙️ Configuration Management
+## 🛠 Current MCP Servers
+
+This repository comes pre-configured with several **Custom** and **Embedded** servers. Below is the list of servers currently baked into the official image:
+
+### Custom Servers (in [`/servers`](./servers/))
+
+*   **[`freqtrade-mcp-server`](./servers/freqtrade-mcp-server/)**: A comprehensive bridge for Freqtrade bots.
+    *   **Tools**: Over 40 tools for trading, status, and history.
+    *   **Env Vars**: `FREQTRADE_PUBLIC_URL`, `FREQTRADE_USERNAME`, `FREQTRADE_PASSWORD`.
+
+### Embedded Servers (cloned in [`Dockerfile`](./Dockerfile))
+
+The following third-party servers are installed directly from their source repositories:
+
+*   **DexScreener Trending**: [`kukapay/dexscreener-trending-mcp`](https://github.com/kukapay/dexscreener-trending-mcp)
+    *   Provides real-time trending pairs and liquidity data from DexScreener.
+*   **Crypto Indicators**: [`kukapay/crypto-indicators-mcp`](https://github.com/kukapay/crypto-indicators-mcp)
+    *   Technical analysis tools (RSI, MACD, etc.) for crypto pairs.
+*   **Crypto Fear & Greed**: [`kukapay/crypto-feargreed-mcp`](https://github.com/kukapay/crypto-feargreed-mcp)
+    *   Sentiment Analysis via the Crypto Fear & Greed Index.
+*   **CryptoPanic**: [`kukapay/cryptopanic-mcp-server`](https://github.com/kukapay/cryptopanic-mcp-server)
+    *   Global crypto news aggregator (Requires `CRYPTOPANIC_API_KEY`).
+*   **Polymarket**: [`caiovicentino/polymarket-mcp-server`](https://github.com/caiovicentino/polymarket-mcp-server)
+    *   Tools for market discovery and interaction on Polymarket.
+*   **n8n-mcp**: Global package installed via npm.
+    *   Bridges n8n workflows as tools. Requires `N8N_API_URL` and `N8N_API_KEY`.
+
+---
 
 The hub uses a **Config Merge Pattern** to allow for both static defaults and dynamic runtime updates without requiring a full image rebuild.
 
