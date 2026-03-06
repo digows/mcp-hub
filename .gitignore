@@ -1,0 +1,41 @@
+# IDEs
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+package-lock.json
+yarn.lock
+__pycache__/
+.venv/
+venv/
+*.pyc
+
+# Build outputs
+dist/
+build/
+*.exe
+*.dll
+*.so
+*.dylib
+
+# Environment variables and secrets
+.env
+.env.*
+!.env.example
+secrets.json
+
+# Logs
+*.log
+*.jsonl
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Temporary files
+.tmp-client/
+/tmp/

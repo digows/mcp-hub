@@ -42,7 +42,10 @@ dotenv.config();
 let accessToken = null;
 let refreshToken = null;
 let tokenExpiresAt = 0;
-const BASE_URL = process.env.FREQTRADE_PUBLIC_URL || 'https://freqtrade.home.digows.com/api/v1';
+const BASE_URL = process.env.FREQTRADE_PUBLIC_URL;
+if (!BASE_URL) {
+    throw new Error('FREQTRADE_PUBLIC_URL environment variable is required.');
+}
 async function login() {
     const username = process.env.FREQTRADE_USERNAME;
     const password = process.env.FREQTRADE_PASSWORD;

@@ -3,7 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.freqtradeRequest = freqtradeRequest;
 const undici_1 = require("undici");
 const auth_js_1 = require("./auth.js");
-const BASE_URL = process.env.FREQTRADE_PUBLIC_URL || 'https://freqtrade.home.digows.com/api/v1';
+const BASE_URL = process.env.FREQTRADE_PUBLIC_URL;
 async function freqtradeRequest(endpoint, options) {
     const url = `${BASE_URL}${endpoint}`;
     let token = await (0, auth_js_1.getValidToken)();

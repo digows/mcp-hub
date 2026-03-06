@@ -6,7 +6,12 @@ let accessToken: string | null = null;
 let refreshToken: string | null = null;
 let tokenExpiresAt: number = 0;
 
-const BASE_URL = process.env.FREQTRADE_PUBLIC_URL || 'https://freqtrade.home.digows.com/api/v1';
+const BASE_URL = process.env.FREQTRADE_PUBLIC_URL;
+
+if (!BASE_URL) {
+    throw new Error('FREQTRADE_PUBLIC_URL environment variable is required.');
+}
+
 
 export async function login(): Promise<void> {
     const username = process.env.FREQTRADE_USERNAME;

@@ -1,7 +1,8 @@
 import { request, Dispatcher } from 'undici';
 import { getValidToken, refreshTokenCall } from './auth.js';
 
-const BASE_URL = process.env.FREQTRADE_PUBLIC_URL || 'https://freqtrade.home.digows.com/api/v1';
+const BASE_URL = process.env.FREQTRADE_PUBLIC_URL;
+
 
 export async function freqtradeRequest<T>(
     endpoint: string,
