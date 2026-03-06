@@ -1,120 +1,98 @@
 # mcp-hub
 
-Central hub for MCP (Model Context Protocol) servers. Built on [`ptbsare/mcp-proxy-server`](https://github.com/ptbsare/mcp-proxy-server), it aggregates one or more MCP servers behind a single SSE endpoint with a management dashboard.
+`mcp-hub` is a specialized centralized gateway designed to aggregate multiple **Model Context Protocol (MCP)** servers behind a single, authenticated SSE (Server-Sent Events) endpoint. It acts as a unified interface for AI agents to interact with a diverse ecosystem of tools and data sources.
 
-## Architecture
+Built on top of [`ptbsare/mcp-proxy-server`](https://github.com/ptbsare/mcp-proxy-server).
 
-```
-┌─────────────────────────────────────────────────────┐
-│                  mcp-hub (Pod)                       │
-│                                                      │
-│  ┌─────────────────────────────────────────────┐    │
-│  │          mcp-proxy-server :3663              │    │
-│  │  ┌────────────┐   ┌─────────────────────┐   │    │
-│  │  │  Admin UI  │   │  SSE/MCP Endpoints  │   │    │
-│  │  └────────────┘   └─────────────────────┘   │    │
-│  │          │ STDIO aggregation                 │    │
-│  │  ┌───────▼──────────────────────────────┐   │    │
-│  │  │   freqtrade-mcp-server (subprocess)  │   │    │
-│  │  │     43 tools exposed via STDIO       │   │    │
-│  │  └──────────────────────────────────────┘   │    │
-│  └─────────────────────────────────────────────┘    │
-└─────────────────────────────────────────────────────┘
-         ▲                        ▲
-  K8s ConfigMap              K8s Secret
-  (non-sensitive)            (credentials)
-```
+---
 
-### Config Merge Pattern
+## 🏗 Architecture
 
-On every pod startup, the entrypoint script ([`docker-entrypoint.sh`](./docker-entrypoint.sh)) performs a deep merge of two config layers before starting the proxy:
+The hub runs as a single containerized application, orchestrating several internal and external MCP servers simultaneously.
 
-```
-mcp_server.base.json  ← Baked into the image (custom servers, always active)
-mcp_server_extra.json ← Mounted from Secret (external servers, no rebuild needed)
-        ↓ merge
-mcp_server.json       ← Final config read by mcp-proxy-server
+```mermaid
+graph TD
+    User([AI Agent / Client]) -- SSE + X-Api-Key --> Hub[mcp-hub]
+    
+    subgraph "Internal Servers (Baked)"
+        Hub -- STDIO --> Custom[Custom Servers /servers]
+        Hub -- STDIO --> Embedded[Embedded Servers Dockerfile]
+    end
+    
+    subgraph "External Servers (Runtime)"
+        Hub -- HTTP/SSE --> Remote[Remote MCP Servers]
+    end
+
+    K8s[(K8s Config / Secrets)] -- Merges --> Config[mcp_server.json]
+    Config -- Defines --> Hub
 ```
 
 ---
 
-## Repository Structure
+## 🔌 Server Integration Types
 
-```
-mcp-gateway/
-├── Dockerfile                        # Fat image: proxy + custom servers
-├── docker-entrypoint.sh              # Config merge + startup script
-├── mcp_server.json                   # Base config (baked as mcp_server.base.json)
-└── servers/
-    └── freqtrade-mcp-server/         # Custom Freqtrade MCP server
-        ├── src/index.ts              # Server implementation (dual STDIO/SSE)
-        └── README.md                 # Freqtrade server docs
-```
+`mcp-hub` supports three distinct ways to integrate MCP servers:
 
----
+### 1. External Servers (Online/Remote)
+Used for servers that are already deployed and accessible over the network (HTTP/SSE).
+- **Setup**: Configured at runtime via `mcp_server_extra.json`.
+- **Latency**: Network-dependent.
+- **Example**: A remote `n8n-executor` or a public MCP service.
 
-## Built-in Servers (Baked into Image)
+### 2. Custom Servers (Local Development)
+Used for bespoke servers developed specifically within this repository.
+- **Location**: Found in the [`/servers`](./servers/) directory.
+- **Setup**: Baked into the Docker image through the `Dockerfile`.
+- **Communication**: Managed via **STDIO** for maximum performance and security.
+- **Example**: [`freqtrade-mcp-server`](./servers/freqtrade-mcp-server/).
 
-These servers are compiled/installed into the Docker image and are defined in `mcp_server.json`.
-
-### 1. Freqtrade MCP Server
-Exposes 43 tools from your Freqtrade bot.
-- **Tools**: `freqtrade__status`, `freqtrade__balance`, `freqtrade__force_enter`, etc.
-- **Config**: Uses `FREQTRADE_PUBLIC_URL`, `FREQTRADE_USERNAME`, `FREQTRADE_PASSWORD`.
-
-### 2. Research & Alpha Tools (Kukapay)
-Real-time market insights and sentiment analysis.
-- **DexScreener** (`dexscreener__*`): Trending pairs and liquidity data.
-- **CryptoPanic** (`cryptopanic__*`): Global crypto news (requires `CRYPTOPANIC_API_KEY`).
-- **Fear & Greed** (`feargreed__*`): Market sentiment index.
-- **Technical Indicators** (`indicators__*`): RSI, MACD, etc.
-
-### 3. n8n-mcp
-Bridges your n8n workflows as tools.
-- **Tools**: `n8n-mcp__*` (mapped from active workflows).
-- **Config**: Uses `N8N_API_URL` and `N8N_API_KEY`.
+### 3. Embedded Servers (Third-Party Clones)
+Used for existing public MCP servers that don't have a stable online endpoint or need to be "pinned" for stability.
+- **Setup**: Cloned and installed directly into the image via the [`Dockerfile`](./Dockerfile).
+- **Communication**: Managed via **STDIO**.
+- **Example**: DexScreener, CryptoPanic, and other research tools sourced from external repositories.
 
 ---
 
-## External Servers (Runtime via Secret)
+## ⚙️ Configuration Management
 
-You can wire in external MCP servers without rebuilding the image by editing `mcp_server_extra.json` in `secrets.yml`.
+The hub uses a **Config Merge Pattern** to allow for both static defaults and dynamic runtime updates without requiring a full image rebuild.
 
-Example for adding `n8n-executor` (converted from MCPorter):
-```json
-{
-  "mcpServers": {
-    "n8n-executor": {
-      "type": "http",
-      "url": "https://n8n.home.digows.com/mcp-server/http",
-      "headers": { "Authorization": "Bearer ..." },
-      "active": true
-    }
-  }
-}
-```
+### The Merge Process
+On every startup, the [`docker-entrypoint.sh`](./docker-entrypoint.sh) script performs a deep merge of:
+
+1.  **`mcp_server.base.json`**: Compiled defaults baked into the image (Custom & Embedded servers).
+2.  **`mcp_server_extra.json`**: Runtime additions or overrides provided via Kubernetes Secrets or ConfigMaps.
+
+The resulting `mcp_server.json` is what the proxy server uses to initialize all connections.
 
 ---
 
-## Kubernetes Configuration
+## 🚀 Getting Started
 
-### ConfigMap (non-sensitive)
-- `PORT`: `3663` (Hub port)
-- `ENABLE_ADMIN_UI`: `true`
-- `FREQTRADE_PUBLIC_URL`: Internal bot URL.
-- `N8N_API_URL`: Internal n8n URL.
+### Adding a New Server
 
-### Secret (sensitive)
-- `FREQTRADE_USERNAME/PASSWORD`: Bot credentials.
-- `N8N_API_KEY`: For workflow access.
-- `CRYPTOPANIC_API_KEY`: Optional news key.
-- `ADMIN_USERNAME/PASSWORD`: Login for `https://mcp-hub.home.digows.com/`
-- `ALLOWED_KEYS`: API key for external clients (pass via `X-Api-Key`).
-- `mcp_server_extra.json`: JSON configuration for external servers.
+| Server Type | Procedure |
+| :--- | :--- |
+| **External** | Add the configuration to `mcp_server_extra.json` in your K8s Secret. |
+| **Custom** | Create a new folder in `/servers`, implement the logic, and update the `Dockerfile` and `mcp_server.json`. |
+| **Embedded** | Add a `git clone` and installation step to the `Dockerfile`, then reference it in `mcp_server.json`. |
+
+### Security
+All incoming requests to the hub must include an `X-Api-Key` header.
+- **Admin UI**: Protected by basic auth (configured via `ADMIN_USERNAME/PASSWORD`).
+- **MCP Endpoint**: `/sse`
 
 ---
 
-## Endpoints
-- **Admin Dashboard**: `https://mcp-hub.home.digows.com/`
-- **SSE/MCP Endpoint**: `https://mcp-hub.home.digows.com/sse`
-- **Authentication**: All SSE/MCP requests MUST include `X-Api-Key: <ALLOWED_KEYS_VALUE>`.
+## 🛠 Repository Structure
+
+- [`/servers`](./servers/): Source code for custom MCP servers.
+- [`Dockerfile`](./Dockerfile): Defines the hub environment, installs system dependencies, and builds internal servers.
+- [`mcp_server.json`](./mcp_server.json): The default configuration for baked-in servers.
+- [`docker-entrypoint.sh`](./docker-entrypoint.sh): Orchestrates the configuration merge and startup.
+
+---
+
+## 📝 License
+Proprietary / Internal.
